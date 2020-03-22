@@ -24,13 +24,12 @@
     <div id="info">Game programing HW1 
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
-    <script src="https://threejs.org/build/three.min.js"></script>
     <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
 	<script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/loaders/OBJLoader.js"></script>
     <script>
-        var camera ,renderer,scene,controls,car,othcam,body;
+        var camera ,renderer,scene,controls,car,othcam,body,floor;
         var angle =0;
 
         init();
@@ -108,12 +107,12 @@
             texture.repeat.set(1, 1);
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
-            mesh = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+            floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
             new THREE.MeshBasicMaterial({
                 map: texture
             }))
-            mesh.rotation.x = -Math.PI / 2;
-            scene.add(mesh);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
 
             /////////////////////////////////////// car body
             var geometry = new THREE.BoxGeometry( 14, 1, 32 );
@@ -204,7 +203,7 @@
             renderer.setViewport(0,0,IW/2,IH);
             camera.aspect=IW/2/IH;
             camera.updateProjectionMatrix();
-            let carpos = car.localToWorld(new THREE.Vector3(-5,30,50));
+            let carpos = car.localToWorld(new THREE.Vector3(-10,20,50));
             camera.position.copy(carpos);
             camera.lookAt(car.position);
             renderer.render(scene,camera);
@@ -212,8 +211,8 @@
             renderer.setViewport(IW/2,0,IW/2,IH);
             othcam.aspect=IW/2/IH;
             othcam.updateProjectionMatrix(); 
-            othcam.position.set(car.position.x,100,car.position.z);
-            othcam.lookAt(car.position);
+            othcam.position.set(0,450,0);
+            othcam.lookAt(0,0,0);
             renderer.render(scene,othcam);          
             
 
