@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        padding: 10px;
+        text-align: center;
+        color: #3455eb;
+        }
+
+        body {
+        overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">HW3<br><button id="play" style="width:20%">Play</button><br> </div>
+    <script src="https://threejs.org/build/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5/dat.gui.min.js"></script>
+    <script src="https://raw.githack.com/mrdoob/three.js/dev/examples/js/misc/Gyroscope.js"></script>
+    <audio id="soundtrack" autoplay loop style="display:none">
+    <source src="https://940235carl.github.io/Game-Program/Pink parter.mp3" type='audio/mp3'>
+    </audio>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script>
+            var camera, scene, renderer,k,Head,Torso,Larm,Rarm,Lleg,Rleg,Lknee,Rknee,all,on=1,on2=0,on3=1,on4=0,light;
+            var angle = 0,soundVal = 1.0,sign=1.0,soundTrack,isPaused = false;
+
+            var opacity = 1.0;
+            var foodsteps=[];
+
+            var pos;
+            var pose1 = {
+                theta1: 0.8,
+                theta2: -0.8,
+                theta3: 0.0,
+                theta4: 0.0,
+                pos: 0.0,
+                theta5:-0.3
+            }
+            var pose2 = {
+                theta1: -0.8,
+                theta2: 0.8,
+                theta3: 0.0,
+                theta4: 0.0,
+                pos: 0.0,
+                theta5:0.3
+            }
+            var pose1p = {
+                theta1: 0.5,
+                theta2: -0.9,
+                theta3: -0.3,
+                theta4: 0.8,
+                pos: 0.0,
+                theta5:-0.3
+            }
+
+            var jump = {
+                theta1: 0.5,
+                theta2: -0.9,
+                theta3: -0.3,
+                theta4: 0.8,
+                pos: 5.0,
+                theta5:-0.5
+            }
+            var pose2p = {
+                theta1: -0.5,
+                theta2: 0.9,
+                theta3: -0.8,
+                theta4: 0.3,
+                pos: 0.0,
+                theta5:0.3
+            }
+
+            var jump2 = {
+                theta1: -0.5,
+                theta2: 0.9,
+                theta3: -0.8,
+                theta4: 0.3,
+                pos: 5.0,
+                theta5:0.5
+            }
+            var keys = [
+                [0, pose1],
+                [0.15,pose1p],
+                [0.25,jump],
+                [0.3,pose1],
+                [0.5, pose2],
+                [0.7,pose2p],
+                [0.8,jump2],
+                [0.85, pose2],
+                [1, pose1]
+            ];
+            var T = 2;
+            var clock = new THREE.Clock();
+            var ts = clock.getElapsedTime();
+            var intKey = [];
+            var footsteps =[];
+
+            class footstep{
+                    constructor(px,pz){
+                this.mesh = new THREE.Mesh (new THREE.PlaneGeometry (20,20), new THREE.MeshBasicMaterial({map: tex, alphaTest:0.5, transparent: true,side: THREE.DoubleSide}));
+                this.mesh.rotation.x=Math.PI/2;
+                this.mesh.position.set(px,1e-2,pz);
+                scene.add(this.mesh);
+                }
+                    
+
+            }
+
+            $('#play').click ( function() {
+                isPaused = !isPaused;
+                if (isPaused) { 
+                    $('#play').text ('Play')
+                    soundTrack.pause();
+                } else {
+                    $('#play').text ('Pause')
+                    soundTrack.play();
+                }
+            });
+
+            init();
+            animate();
+
+            function loadCubemap() {
+
+
+                var path ="map2/"
+                var format = '.jpg';
+
+
+                var urls = [
+                    path + 'posx' + format, path + 'negx' + format,
+                    path + 'posy' + format, path + 'negy' + format,
+                    path + 'posz' + format, path + 'negz' + format
+                ];
+
+
+                var loader = new THREE.CubeTextureLoader();
+
+
+                loader.setCrossOrigin ('');
+                var cubeMap = loader.load(urls);
+
+                cubeMap.format = THREE.RGBFormat;
+
+                return cubeMap;
+
+            }
+
+            function init() {
+            
+            scene = new THREE.Scene();
+                
+            ///// sound
+            soundTrack = document.getElementById ('soundtrack');
+            
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x888888);
+            document.body.appendChild(renderer.domElement);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(0,100,150);
+            let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+            //////////////////////////////////////////////////////////////// floor
+            var ground = new THREE.Mesh (new THREE.PlaneGeometry (200,200), new THREE.MeshPhongMaterial({color:'white'}));
+            ground.rotation.x=-Math.PI/2;
+            scene.add (ground);
+            
+            //////////////////// minecraft
+            
+            all = new THREE.Group();
+            
+            Head = makehead(5);
+            Torso = maketorso(5);
+            Head.position.set(0,7.57*5,0);
+            Torso.position.set(0,4.09*5,0);
+            all.add(Head,Torso);
+            
+            Larm = makeLarm(5);
+            Larm.position.set(1.26*5,7.57*5,0);
+            
+            Rarm = makeRarm(5);
+            Rarm.position.set(-1.26*5*2,7.57*5,0);
+            all.add(Larm,Rarm);
+            
+            Lleg = makeLleg(5);
+            Lleg.position.set(0.0,4.09*5,0);
+            
+                Lknee = makeLleg(5);
+            Lknee.position.set(1.9*5,0,0);
+            Lknee.rotation.z=0;
+            Lleg.add(Lknee);
+            
+            Rleg = makeRleg(5);
+            Rleg.position.set(-1.26*5,4.09*5,0);
+            
+            Rknee = makeRleg(5);
+            Rknee.position.set(-1.9*5,0,0);
+            Rknee.rotation.z=0;
+            Rleg.add(Rknee);
+            
+            all.add(Lleg,Rleg);
+            
+            scene.add(all);
+            
+            all.position.set(50,0,0);
+            
+            var loader = new THREE.TextureLoader();
+            loader.setCrossOrigin ('');
+            tex = loader.load ('https://i.imgur.com/m81uQCB.png');
+            
+            ////////////////////////////////// camera
+
+            gyro = new THREE.Gyroscope();
+            scene.add (gyro);
+            gyro.add (camera);
+            all.add (gyro);
+
+            /////////////////////////////////// cubemap
+
+            var cubeMap = loadCubemap();
+            scene.background = cubeMap;
+            
+            /////////////////////////////////// light
+
+            light = new THREE.PointLight(0xffffff, 1, 300);
+            //light.position.set(0,50,0);
+            scene.add(light);
+            }
+            /////////////////////////////////// make Minecraft
+            function makehead(k){
+                    var headgroup = new THREE.Group();
+                var mat = new THREE.MeshNormalMaterial();
+                var head = makeheads(k);
+                
+                    headgroup.add(head);
+
+                    return headgroup;
+            }
+
+            function maketorso(k){
+                var torsogroup = new THREE.Group();
+            var mat = new THREE.MeshNormalMaterial();
+            var torso = maketorsos(5);
+            
+            torsogroup.add(torso);
+            
+            return torsogroup;
+            }
+
+            function makeLarm(k){
+                var armgroup = new THREE.Group();
+            var mat = new THREE.MeshNormalMaterial();
+            var arm = makearm(5);
+
+            arm.position.x=3.82*k/2;
+            
+            armgroup.add(arm);
+            
+            armgroup.rotation.z=-Math.PI/2;
+            //armgroup.rotation.y=Math.PI;
+            
+            armgroup.rotation.order = 'ZYX';
+            
+            return armgroup;
+            }
+
+            function makeRarm(k){
+                var armgroup = new THREE.Group();
+            var mat = new THREE.MeshNormalMaterial();
+            var arm = makearm(5);
+                arm.rotation.z=Math.PI;
+            
+            arm.position.x=-3.82*k/2;
+            
+            armgroup.add(arm);
+            
+            armgroup.rotation.z=Math.PI/2;
+            
+            arm.rotation.order = 'ZYX';
+            
+            return armgroup;
+            }
+
+            function makeLleg(k){
+                var leggroup = new THREE.Group();
+            var mat = new THREE.MeshNormalMaterial();
+            var leg = makeleg(k);
+            
+            leg.position.x=2.045*k/2;
+            
+            leggroup.add(leg);
+            
+            leggroup.rotation.z=-Math.PI/2;
+            
+            leg.rotation.order= 'ZYX';
+            return leggroup;
+            }
+
+            function makeRleg(k){
+                var leggroup = new THREE.Group();
+            var mat = new THREE.MeshNormalMaterial();
+            var leg = makeleg(k);
+            leg.rotation.z=Math.PI;
+            leg.position.x=-2.045*k/2;
+            
+            leggroup.add(leg);
+            
+            leggroup.rotation.z=Math.PI/2;
+            
+            leg.rotation.order= 'ZYX';
+            return leggroup;
+            }
+
+            ////////////////////////////////////////////
+
+            function keyframe(t) {
+            var s = ((t - ts) % T) / T;
+
+            for (var i = 1; i < keys.length; i++) {
+                if (keys[i][0] > s) break;
+            }
+            // take i-1
+            var ii = i - 1;
+            var a = (s - keys[ii][0]) / (keys[ii + 1][0] - keys[ii][0]);
+            intKey = [keys[ii][1].theta1 * (1 - a) + keys[ii + 1][1].theta1 * a,
+                        keys[ii][1].theta2 * (1 - a) + keys[ii + 1][1].theta2 * a,
+                        keys[ii][1].theta3 * (1 - a) + keys[ii + 1][1].theta3 * a,
+                        keys[ii][1].theta4 * (1 - a) + keys[ii + 1][1].theta4 * a,
+                        keys[ii][1].pos * (1 - a) + keys[ii + 1][1].pos * a,
+                        keys[ii][1].theta5 * (1 - a) + keys[ii + 1][1].theta5 * a
+            ];
+
+            }
+
+            ///////////////////////////////////////////  custom geometry
+
+            function makeheads(k) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 0, 1.26*k) );//0
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 0, 1.26*k) );//1
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 0, -1.26*k) );//2
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 0, -1.26*k) );//3
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 2.52*k, 1.26*k) );//4
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 2.52*k, 1.26*k) );//5
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 2.52*k, -1.26*k) );//6
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 2.52*k, -1.26*k) );//7
+                        
+                
+                
+                let face;
+                face = new THREE.Face3 ( 0, 1, 5 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 5, 4 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 1, 2, 6 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 6, 5, 1 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 1, 2 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 1, 3 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 0, 4 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 4, 7 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 3, 7 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 7, 6 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 5, 6 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 6, 7 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(0,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                geometry.computeFaceNormals();
+                geometry.computeVertexNormals();
+                
+                let loader = new THREE.TextureLoader();
+                loader.crossOrigin = '';
+                let head1 = loader.load ('https://i.imgur.com/UMYhI5w.png');
+                let nhead2 = loader.load('https://i.imgur.com/pwlGqPH.png')
+                let head2 = loader.load ('https://i.imgur.com/YIF6pdt.png');
+                let head3 = loader.load ('https://i.imgur.com/Cc7rifj.png');
+                    materialArray = [];
+                    materialArray.push (new THREE.MeshBasicMaterial ({map: head1}), new THREE.MeshBasicMaterial ({map: nhead2}),new THREE.MeshBasicMaterial ({map: head3}),new THREE.MeshBasicMaterial ({map: head2}),new THREE.MeshBasicMaterial ({map: head3}),new THREE.MeshBasicMaterial ({map: head3}))
+                
+                return new THREE.Mesh (geometry, materialArray);  
+                }
+
+            //////////////////////////////////////// costom geometry2
+
+            function makearm(k) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices.push ( new THREE.Vector3(-1.76*k, 0, 0.62*k) );//0
+                    geometry.vertices.push ( new THREE.Vector3(1.76*k, 0, 0.62*k) );//1
+                    geometry.vertices.push ( new THREE.Vector3(1.76*k, 0, -0.62*k) );//2
+                    geometry.vertices.push ( new THREE.Vector3(-1.76*k, 0, -0.62*k) );//3
+                    geometry.vertices.push ( new THREE.Vector3(-1.76*k, 1.24*k, 0.62*k) );//4
+                    geometry.vertices.push ( new THREE.Vector3(1.76*k, 1.24*k, 0.62*k) );//5
+                    geometry.vertices.push ( new THREE.Vector3(1.76*k, 1.24*k, -0.62*k) );//6
+                    geometry.vertices.push ( new THREE.Vector3(-1.76*k, 1.24*k, -0.62*k) );//7
+                        
+                
+                
+                let face;
+                face = new THREE.Face3 ( 0, 1, 5 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 5, 4 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 1, 2, 6 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 6, 5, 1 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 1, 2 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 2, 3 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 0, 4 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 4, 7 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 3, 7 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 7, 6 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 5, 6 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 6, 7 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]); 
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                geometry.computeFaceNormals();
+                geometry.computeVertexNormals();
+                
+                let loader = new THREE.TextureLoader();
+                loader.crossOrigin = '';
+                let arm = loader.load ('https://i.imgur.com/WCb24TN.png');
+                let narm = loader.load('https://i.imgur.com/CiQXJ3u.png')
+                    materialArray = [];
+                    materialArray.push (new THREE.MeshBasicMaterial ({map: arm}), new THREE.MeshBasicMaterial ({map: arm}),new THREE.MeshBasicMaterial ({map:arm,side:THREE.DoubleSide}),new THREE.MeshBasicMaterial ({map: narm}),new THREE.MeshBasicMaterial ({map:arm}),new THREE.MeshBasicMaterial ({map: arm}))
+                
+                return new THREE.Mesh (geometry, materialArray);  
+                }
+                
+            /////////////////////////////////////////// custom geometry3
+            
+            function maketorsos(k) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 0, 0.62*k) );//0
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 0, 0.62*k) );//1
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 0, -0.62*k) );//2
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 0, -0.62*k) );//3
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 3.48*k, 0.62*k) );//4
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 3.48*k, 0.62*k) );//5
+                    geometry.vertices.push ( new THREE.Vector3(1.26*k, 3.48*k, -0.62*k) );//6
+                    geometry.vertices.push ( new THREE.Vector3(-1.26*k, 3.48*k, -0.62*k) );//7
+                        
+                
+                
+                let face;
+                face = new THREE.Face3 ( 0, 1, 5 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 5, 4 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 1, 2, 6 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 6, 5, 1 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 1, 2 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 2, 3 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 0, 4 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 4, 7 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 3, 7 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 7, 6 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 5, 6 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 6, 7 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,1), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(0,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);  
+                
+                geometry.computeFaceNormals();
+                geometry.computeVertexNormals();
+                
+                let loader = new THREE.TextureLoader();
+                loader.crossOrigin = '';
+                let nbody1 = loader.load ('https://i.imgur.com/S6ovVRY.png');
+                let nbody2 = loader.load('https://i.imgur.com/Z3bzNb1.png');
+                let nbody3 = loader.load('https://i.imgur.com/IBSlXMs.png');
+                    materialArray = [];
+                    materialArray.push (new THREE.MeshBasicMaterial ({map: nbody1}), new THREE.MeshBasicMaterial ({map: nbody3}),new THREE.MeshBasicMaterial ({map:nbody1,side:THREE.DoubleSide}),new THREE.MeshBasicMaterial ({map: nbody3}),new THREE.MeshBasicMaterial ({map:nbody2}),new THREE.MeshBasicMaterial ({map: nbody1}))
+                
+                return new THREE.Mesh (geometry, materialArray);  
+                }
+                
+            /////////////////////////////////////////// custom geometry4
+            
+            function makeleg(k) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices.push ( new THREE.Vector3(-1.0225*k, 0, 0.62*k) );//0
+                    geometry.vertices.push ( new THREE.Vector3(1.0225*k, 0, 0.62*k) );//1
+                    geometry.vertices.push ( new THREE.Vector3(1.0225*k, 0, -0.62*k) );//2
+                    geometry.vertices.push ( new THREE.Vector3(-1.0225*k, 0, -0.62*k) );//3
+                    geometry.vertices.push ( new THREE.Vector3(-1.0225*k, 1.26*k, 0.62*k) );//4
+                    geometry.vertices.push ( new THREE.Vector3(1.0225*k, 1.26*k, 0.62*k) );//5
+                    geometry.vertices.push ( new THREE.Vector3(1.0225*k, 1.26*k, -0.62*k) );//6
+                    geometry.vertices.push ( new THREE.Vector3(-1.0225*k, 1.26*k, -0.62*k) );//7
+                        
+                
+                
+                let face;
+                face = new THREE.Face3 ( 0, 1, 5 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 5, 4 ); face.materialIndex = 0;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 1, 2, 6 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 6, 5, 1 ); face.materialIndex = 1;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 1, 2 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 0, 2, 3 ); face.materialIndex = 2;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 0, 4 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 3, 4, 7 ); face.materialIndex = 3;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 3, 7 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 2, 7, 6 ); face.materialIndex = 4;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 5, 6 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                face = new THREE.Face3 ( 4, 6, 7 ); face.materialIndex = 5;
+                geometry.faces.push (face);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]); 
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(1,1), new THREE.Vector2(0,1) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(1,0), new THREE.Vector2(0,1), new THREE.Vector2(0,0) ]);  
+                
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(0,0), new THREE.Vector2(1,0) ]);
+                    geometry.faceVertexUvs[0].push ([new THREE.Vector2(0,1), new THREE.Vector2(1,0), new THREE.Vector2(1,1) ]);  
+                
+                geometry.computeFaceNormals();
+                geometry.computeVertexNormals();
+                
+                let loader = new THREE.TextureLoader();
+                loader.crossOrigin = '';
+                let leg = loader.load ('https://i.imgur.com/IBSlXMs.png');
+                //let leg2 = loader.load('https://i.imgur.com/CiQXJ3u.png')
+                    materialArray = [];
+                    materialArray.push (new THREE.MeshBasicMaterial ({map: leg}), new THREE.MeshBasicMaterial ({map: leg}),new THREE.MeshBasicMaterial ({map:leg,side:THREE.DoubleSide}),new THREE.MeshBasicMaterial ({map: leg}),new THREE.MeshBasicMaterial ({map:leg}),new THREE.MeshBasicMaterial ({map: leg}))
+                
+                return new THREE.Mesh (geometry, materialArray);  
+                }
+
+            function animate() {
+            
+                soundtrack.volume = 1;
+            
+            angle+=0.01;
+            
+            keyframe(clock.getElapsedTime());
+            //console.log(intKey[4]);
+            
+            Larm.rotation.y = intKey[0];
+            Lleg.rotation.x = intKey[1];
+            Rarm.rotation.x = intKey[1];
+            Rleg.rotation.x = intKey[0];
+            Lknee.rotation.y = intKey[3];
+            Rknee.rotation.y = intKey[2];
+            Head.rotation.y = intKey[5];
+            
+            all.position.set(80*Math.cos(angle),intKey[4],80*Math.sin(angle));
+            light.position.set(80*Math.cos(angle),50,80*Math.sin(angle));
+            all.rotation.y=-angle; 
+            
+            if(intKey[3] == 0.3 && on==1|| intKey[2] == -0.3&&on2==1){
+                if(intKey[3] == 0.3){
+                    var nfootstep = new footstep(all.position.x-5*Math.cos(angle),all.position.z-5*Math.sin(angle));
+                        nfootstep.mesh.rotation.y=Math.PI;
+                        nfootstep.mesh.rotation.z=-angle;
+                        footsteps.push(nfootstep);
+                        on=0;
+                        on2=1;
+                }
+                if(intKey[2] == -0.3){
+                var nfootstep = new footstep(all.position.x+5*Math.cos(angle),all.position.z+5*Math.sin(angle));
+                        nfootstep.mesh.rotation.z=angle;
+                        footsteps.push(nfootstep);
+                    on=1;
+                    on2=0;
+                }
+            }
+            
+            if(intKey[0] < -0.6&&on3==1){
+                        var nfootstep = new footstep(all.position.x-5*Math.cos(angle),all.position.z-5*Math.sin(angle));
+                        nfootstep.mesh.rotation.z=angle;
+                        footsteps.push(nfootstep);
+                        on3=0;
+                        on4=1;
+            }
+            if(intKey[1] < -0.6&&on4==1){
+                        console.log('true');
+                        var nfootstep = new footstep(all.position.x+5*Math.cos(angle),all.position.z+5*Math.sin(angle));
+                        nfootstep.mesh.rotation.z=angle;
+                        footsteps.push(nfootstep);
+                        on3=1;
+                        on4=0;
+            }
+            
+            for(var j=0;j<footsteps.length;j++){
+                 footsteps[j].mesh.material.opacity-=0.003;
+                 if(footsteps[j].mesh.material.opacity<0) scene.remove(footsteps[j].mesh);
+            }
+            
+            
+            requestAnimationFrame(animate);
+            render();
+
+            }
+
+
+            function render() {
+
+            renderer.render(scene, camera);
+
+            }        
+
+    </script>
+</body>
+</html>
